@@ -46,12 +46,13 @@ public:
 	int64_t permutedChoiceTwo(int64_t cipherKey);
 	void leftCircularShift(int64_t &cipherKey);
 	void roundOperation(int64_t &cipherBlock, int64_t cipherSubKey);
-	void roundExpansion();
-	void roundSubstition();
-	void roundPermutation();
+	int64_t roundExpansion(int32_t cipherSubBlock);
+	int32_t roundSubstition(int64_t expandedCipherSubBlock);
+	void roundPermutation(int32_t &cipherSubBlock);
 	void bitSwap();
-	void inversePermutation();
-	void exclusiveOr32();
+	void inversePermutation(int64_t &cipherBlock);
+	int32_t exclusiveOr32(int32_t leftCipherSubBlock, int32_t rightCipherSubBlock);
+	int64_t exclusiveOr48(int64_t expandedCipherSubBlock,int64_t cipherSubKey);
 
 	/*CONSTANTS*/
 

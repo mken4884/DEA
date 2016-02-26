@@ -25,42 +25,42 @@ void DEA::initialPermutation(int64_t &cipherBlock64Bits)
 
 }
 
-void DEA::permutedChoiceOne()
+void DEA::permutedChoiceOne(int64_t &cipherKey)
 {
 
 }
 
-void DEA::keyOperation()
+void DEA::keyOperation(int64_t &cipherKey)
 {
 
 }
 
-void DEA::permutedChoiceTwo()
+int64_t DEA::permutedChoiceTwo(int64_t cipherKey)
 {
 
 }
 
-void DEA::leftCircularShift()
+void DEA::leftCircularShift(int64_t &cipherKey)
 {
 
 }
 
-void DEA::roundOperation()
+void DEA::roundOperation(int64_t &cipherBlock, int64_t cipherSubKey)
 {
 
 }
 
-void DEA::roundExpansion()
+int64_t DEA::roundExpansion(int32_t cipherSubBlock)
 {
 
 }
 
-void DEA::roundSubstition()
+int32_t DEA::roundSubstition(int64_t expandedCipherSubBlock)
 {
 
 }
 
-void DEA::roundPermutation()
+void DEA::roundPermutation(int32_t &cipherSubBlock)
 {
 
 }
@@ -70,12 +70,16 @@ void DEA::bitSwap()
 
 }
 
-void DEA::inversePermutation()
+void DEA::inversePermutation(int64_t &cipherBlock)
 {
 
 }
 
-void DEA::exclusiveOr32()
+int32_t DEA::exclusiveOr32(int32_t leftCipherSubBlock, int32_t rightCipherSubBlock)
+{
+
+}
+int64_t DEA::exclusiveOr48(int64_t expandedCipherSubBlock, int64_t cipherSubKey)
 {
 
 }
