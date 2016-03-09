@@ -74,8 +74,9 @@ uint64_t DEA::permutedChoiceTwo(uint64_t cipherKey)
 	for (i = 0; i < this->SUBKEYSIZE; i++)
 	{
 		//add new bit positions to the tempKey 
-		//rearrangedKey += this->switchBit(i, this->permutedChoiceTwoTable[i], cipherKey);
-		rearrangedKey += this->switchBit( this->permutedChoiceTwoTable[i], i,cipherKey);
+		//Algorithm assumes that bit positions are labels as 1 2 3 4 ..ect instead of the msb being leftmost, its rightmost.
+		//The bit shifting takes this into account by 64-position to translate msb being leftmost to rightmost. Fucking mathematicians 
+		rearrangedKey = (rearrangedKey << 1) | ((cipherKey >> (56 - this->permutedChoiceTwoTable[i])) & 0x01);
 	}
 
 	//clear the top 8 unused bits
