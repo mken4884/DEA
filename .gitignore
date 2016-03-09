@@ -284,5 +284,5 @@ $RECYCLE.BIN/
 *.pdf
 *.vcxproj
 *.filters
-.gitignore
-
+*.gitignore
+*.java

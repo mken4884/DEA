@@ -13,46 +13,55 @@ the keys.*/
 class DEA {
 private:
 	/*VARIABLES*/
-	int64_t *subKeyList;
+	uint64_t *subKeyList;
 
 	/*TYPE DEFS & STRUCTS*/
-	typedef int8_t table;
+	typedef uint8_t table;
 	
 	/*CONSTANTS*/
 	//holds the left shift cycle for the cipher key, index corresponds to which round and value is number of left shifts
-	const table*  initialPermutationTable;
-	const table*  inversePermutationTable;
-	const table*  expansionPermuationTable;
-	const table*  permutationFunctionTable;
-	const table*  inputKeyTable;
-	const table*  permutedChoiceOneTable;
-	const table*  permutedChoiceTwoTable;
-	const int8_t* leftShiftSchedule;
-	const table** substitionBoxesArray;
-	const int8_t  CIPHERBLOCKSIZE = 64;
-	const int8_t  KEYSIZE = 56;
-	const int8_t  SUBKEYSIZE = 48;
-	const int8_t  NUMBEROFROUNDS = 16;
+	table*   initialPermutationTable;
+	table*   inversePermutationTable;
+	table*   expansionPermuationTable;
+	table*   permutationFunctionTable;
+	table*   permutedChoiceOneTable;
+	table*   permutedChoiceTwoTable;
+	table*   leftShiftSchedule;
+	table*** substitionBoxesArray;
 
+
+	const uint8_t   CIPHERBLOCKSIZE = 64;
+	const uint8_t   KEYSIZE = 56;
+	const uint8_t   SPLITKEYSIZE = 28;
+	const uint8_t   SUBKEYSIZE = 48;
+	const uint8_t   NUMBEROFROUNDS = 16;
+
+	const uint64_t KEYSIZEMASK = 0x00FFFFFFFFFFFFFFF;
+	const uint64_t SUBKEYSIZEMASK = 0x0000FFFFFFFFFFFF;
+	const uint32_t SPLITKEYSIZEMASK = 0x0FFFFFFF;
+
+
+	/*FUNCTIONS*/
+	void populatetables();
+	inline uint64_t switchBit(int bitOneIndex, int bitTwoIndex, uint64_t block);
 public:
 	/*FUNCTION DEFS*/
 	DEA();
 	~DEA();
 	void encrypt();
 	void decrypt();
-	void initialPermutation(int64_t &cipherBlock);
-	void permutedChoiceOne(int64_t &cipherKey);
-	void keyOperation(int64_t &cipherKey);
-	int64_t permutedChoiceTwo(int64_t cipherKey);
-	void leftCircularShift(int64_t &cipherKey);
-	void roundOperation(int64_t &cipherBlock, int64_t cipherSubKey);
-	int64_t roundExpansion(int32_t cipherSubBlock);
-	int32_t roundSubstition(int64_t expandedCipherSubBlock);
-	void roundPermutation(int32_t &cipherSubBlock);
-	void bitSwap();
-	void inversePermutation(int64_t &cipherBlock);
-	int32_t exclusiveOr32(int32_t leftCipherSubBlock, int32_t rightCipherSubBlock);
-	int64_t exclusiveOr48(int64_t expandedCipherSubBlock,int64_t cipherSubKey);
+	void initialPermutation(uint64_t &cipherBlock);
+	uint64_t permutedChoiceOne(uint64_t cipherKey);
+	void generateSubKeys(uint64_t &cipherKey);
+	uint64_t permutedChoiceTwo(uint64_t cipherKey);
+	uint32_t leftCircularShift(int round, uint32_t cipherKey);
+	void roundOperation(uint64_t &cipherBlock, uint64_t cipherSubKey);
+	uint64_t roundExpansion(uint32_t cipherSubBlock);
+	uint32_t roundSubstition(uint64_t expandedCipherSubBlock);
+	void roundPermutation(uint32_t &cipherSubBlock);
+	void inversePermutation(uint64_t &cipherBlock);
+	uint32_t exclusiveOr32(uint32_t leftCipherSubBlock, uint32_t rightCipherSubBlock);
+	uint64_t exclusiveOr48(uint64_t expandedCipherSubBlock,uint64_t cipherSubKey);
 
 	/*CONSTANTS*/
 
