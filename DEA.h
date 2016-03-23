@@ -31,6 +31,7 @@ private:
 
 
 	const uint8_t   CIPHERBLOCKSIZE = 64;
+	const uint8_t   CIPHERSUBBLOCKSIZE = 32;
 	const uint8_t   KEYSIZE = 56;
 	const uint8_t   SPLITKEYSIZE = 28;
 	const uint8_t   SUBKEYSIZE = 48;
@@ -48,18 +49,18 @@ public:
 	/*FUNCTION DEFS*/
 	DEA();
 	~DEA();
-	void encrypt();
+	uint64_t encrypt(uint64_t cipherBlock, uint64_t cipherKey);
 	void decrypt();
-	void initialPermutation(uint64_t &cipherBlock);
+	uint64_t initialPermutation(uint64_t cipherBlock);
 	uint64_t permutedChoiceOne(uint64_t cipherKey);
 	void generateSubKeys(uint64_t &cipherKey);
 	uint64_t permutedChoiceTwo(uint64_t cipherKey);
-	uint32_t leftCircularShift(int round, uint32_t cipherKey);
-	void roundOperation(uint64_t &cipherBlock, uint64_t cipherSubKey);
+	inline uint32_t leftCircularShift(int round, uint32_t cipherKey);
+	uint64_t roundOperation(uint64_t cipherBlock, uint64_t cipherSubKey);
 	uint64_t roundExpansion(uint32_t cipherSubBlock);
 	uint32_t roundSubstition(uint64_t expandedCipherSubBlock);
-	void roundPermutation(uint32_t &cipherSubBlock);
-	void inversePermutation(uint64_t &cipherBlock);
+	uint32_t roundPermutation(uint32_t cipherSubBlock);
+	uint64_t inversePermutation(uint64_t cipherBlock);
 	uint32_t exclusiveOr32(uint32_t leftCipherSubBlock, uint32_t rightCipherSubBlock);
 	uint64_t exclusiveOr48(uint64_t expandedCipherSubBlock,uint64_t cipherSubKey);
 

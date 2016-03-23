@@ -12,9 +12,15 @@ DEA::~DEA()
 
 }
 
-void DEA::encrypt()
+uint64_t DEA::encrypt(uint64_t cipherBlock, uint64_t cipherKey)
 {
-
+	int i;
+	this->generateSubKeys(cipherKey);
+	for (i = 0; i < this->NUMBEROFROUNDS; i++)
+	{
+		cipherBlock = this->roundOperation(cipherBlock, this->subKeyList[i]);
+	}
+	return cipherBlock;
 }
 
 void DEA::decrypt()
@@ -22,9 +28,17 @@ void DEA::decrypt()
 
 }
 
-void DEA::initialPermutation(uint64_t &cipherBlock64Bits)
+uint64_t DEA::initialPermutation(uint64_t cipherBlock64Bits)
 {
+	int i;
+	uint64_t rearrangedCipherBlock = 0;
+	for (i = 0; i < this->CIPHERBLOCKSIZE; i++)
+	{
+	    //switch bits as table requests. THis builds the cipherblocks bit by bit starting at bit zero
+		rearrangedCipherBlock = (rearrangedCipherBlock << 1) | ((cipherBlock64Bits >> (this->CIPHERBLOCKSIZE - this->initialPermutationTable[i])) & 0x01);
+	}
 
+	return rearrangedCipherBlock;
 }
 
 uint64_t DEA::permutedChoiceOne(uint64_t cipherKey)
@@ -34,7 +48,7 @@ uint64_t DEA::permutedChoiceOne(uint64_t cipherKey)
 	for (i = 0; i < this->KEYSIZE; i++)
 	{
 		//add new bit positions to the tempKey 
-		rearrangedKey = (rearrangedKey << 1) | ((cipherKey >> (64-this->permutedChoiceOneTable[i])) & 0x01);
+		rearrangedKey = (rearrangedKey << 1) | ((cipherKey >> (this->CIPHERBLOCKSIZE-this->permutedChoiceOneTable[i])) & 0x01);
 	}
 
 	return rearrangedKey;
@@ -76,37 +90,76 @@ uint64_t DEA::permutedChoiceTwo(uint64_t cipherKey)
 		//add new bit positions to the tempKey 
 		//Algorithm assumes that bit positions are labels as 1 2 3 4 ..ect instead of the msb being leftmost, its rightmost.
 		//The bit shifting takes this into account by 64-position to translate msb being leftmost to rightmost. Fucking mathematicians 
-		rearrangedKey = (rearrangedKey << 1) | ((cipherKey >> (56 - this->permutedChoiceTwoTable[i])) & 0x01);
+		rearrangedKey = (rearrangedKey << 1) | ((cipherKey >> (this->KEYSIZE - this->permutedChoiceTwoTable[i])) & 0x01);
 	}
 
 	//clear the top 8 unused bits
 	return rearrangedKey&this->SUBKEYSIZEMASK;
 }
 
-uint32_t DEA::leftCircularShift(int round, uint32_t cipherKey)
+inline uint32_t DEA::leftCircularShift(int round, uint32_t cipherKey)
 {
 	return ((cipherKey << this->leftShiftSchedule[round]) & this->SPLITKEYSIZEMASK) | (cipherKey >> (this->SPLITKEYSIZE - this->leftShiftSchedule[round]));
 	
 }
 
-void DEA::roundOperation(uint64_t &cipherBlock, uint64_t cipherSubKey)
+uint64_t DEA::roundOperation(uint64_t cipherBlock, uint64_t cipherSubKey)
 {
+	uint32_t leftCipherSubBlock = (uint32_t)(cipherBlock >> 32);
+	uint32_t rightCipherSubBlock = (uint32_t)(cipherBlock & 0x00000000FFFFFFFF);
 
+	uint64_t expandedCipherSubBlock = this->roundExpansion(rightCipherSubBlock);
+	expandedCipherSubBlock ^= cipherSubKey;
+	rightCipherSubBlock = this->roundSubstition(expandedCipherSubBlock);
+	rightCipherSubBlock = this->roundPermutation(rightCipherSubBlock);
+	rightCipherSubBlock ^= leftCipherSubBlock;
+	return ((((uint64_t)leftCipherSubBlock) << 32) & 0xFFFFFFFF00000000) | ((uint64_t)rightCipherSubBlock);
 }
 
 uint64_t DEA::roundExpansion(uint32_t cipherSubBlock)
 {
-	return 0;
+	int i;
+	uint64_t expandedSubCipherBlock = 0;
+	for (i = 0; i < this->SUBKEYSIZE; i++)
+	{
+		expandedSubCipherBlock = (expandedSubCipherBlock << 1) | ((((uint64_t)cipherSubBlock) >> (this->SUBKEYSIZE - this->expansionPermuationTable[i])) & 0x01);
+	}
+	return expandedSubCipherBlock;
+	
 }
 
 uint32_t DEA::roundSubstition(uint64_t expandedCipherSubBlock)
 {
-	return 0;
+	int i;
+	int x, y;
+	uint64_t cipherMask = 0x000000000000007F;
+	uint32_t cipherSubBlock = 0;
+	uint8_t sixBitBlock;
+	uint8_t xCoord = 0;
+	uint8_t yCoord = 0;
+	for (i = 0; i < 8; i++)
+	{
+		//substitution is determined by 8, 6 bit blocks so examine each 6 bit block by using the mask
+		//get the six bits and reset six bits as byte instead of long
+		sixBitBlock = (uint8_t)(((cipherMask << (i * 6))&expandedCipherSubBlock)>> (i * 6));
+		xCoord = (sixBitBlock & 0x20 >> 4) | (sixBitBlock & 0x01);
+		yCoord = (sixBitBlock >> 1) & 0x0F;
+		cipherSubBlock |= ((uint32_t)this->substitionBoxesArray[i][xCoord][yCoord])<<(i*6);
+	}
+	return cipherSubBlock;
 }
 
-void DEA::roundPermutation(uint32_t &cipherSubBlock)
+uint32_t DEA::roundPermutation(uint32_t cipherSubBlock)
 {
+	int i;
+	uint32_t rearrangedSubBlock = 0;
+	for (i = 0; i < this->CIPHERSUBBLOCKSIZE; i++)
+	{
+		//add new bit positions to the ciphersubblock 
+		rearrangedSubBlock = (rearrangedSubBlock << 1) | ((cipherSubBlock >> (this->CIPHERSUBBLOCKSIZE - this->permutationFunctionTable[i])) & 0x01);
+	}
 
+	return rearrangedSubBlock;
 }
 
 /*Bit one is the source bit to be moved to bitTwo's location*/
@@ -126,19 +179,19 @@ inline uint64_t DEA::switchBit(int bitOneIndex, int bitTwoIndex, uint64_t block)
 	
 }
 
-void DEA::inversePermutation(uint64_t &cipherBlock)
+uint64_t DEA::inversePermutation(uint64_t cipherBlock)
 {
+	int i;
+	uint64_t rearrangedCipherBlock = 0;
+	for (i = 0; i < this->CIPHERBLOCKSIZE; i++)
+	{
+		//switch bits as table requests. THis builds the cipherblocks bit by bit starting at bit zero
+		rearrangedCipherBlock = (rearrangedCipherBlock << 1) | ((cipherBlock >> (this->CIPHERBLOCKSIZE - this->inversePermutationTable[i])) & 0x01);
+	}
 
+	return rearrangedCipherBlock;
 }
 
-uint32_t DEA::exclusiveOr32(uint32_t leftCipherSubBlock, uint32_t rightCipherSubBlock)
-{
-	return 0;
-}
-uint64_t DEA::exclusiveOr48(uint64_t expandedCipherSubBlock, uint64_t cipherSubKey)
-{
-	return 0;
-}
 
 void DEA::populatetables()
 {
