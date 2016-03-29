@@ -49,8 +49,10 @@ public:
 	/*FUNCTION DEFS*/
 	DEA();
 	~DEA();
-	uint64_t encrypt(uint64_t cipherBlock, uint64_t cipherKey);
-	void decrypt();
+	void encrypt(char* sourceFile, char* destFile, uint64_t cipherKey);
+	void decrypt(char* sourceFile, char* destFile, uint64_t cipherKey);
+	void encryptBlock(uint64_t* cipherBlock);
+	void decryptBlock(uint64_t* cipherBlock);
 	uint64_t initialPermutation(uint64_t cipherBlock);
 	uint64_t permutedChoiceOne(uint64_t cipherKey);
 	void generateSubKeys(uint64_t &cipherKey);

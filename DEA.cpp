@@ -12,20 +12,82 @@ DEA::~DEA()
 
 }
 
-uint64_t DEA::encrypt(uint64_t cipherBlock, uint64_t cipherKey)
+void DEA::encrypt(char* sourceFile, char* destFile, uint64_t cipherKey)
 {
-	int i;
+	//generate keys
+	//throw in thread
 	this->generateSubKeys(cipherKey);
-	for (i = 0; i < this->NUMBEROFROUNDS; i++)
+
+
+	//one cipher block is eight chars
+	int blockSize = 8;
+	char* cipherBlock = new char[8];
+	std::ifstream source(sourceFile, std::ios::binary | std::ios::in);
+	std::ofstream dest(destFile, std::ios::binary | std::ios::out);
+	while (source.eof() == false)
 	{
-		cipherBlock = this->roundOperation(cipherBlock, this->subKeyList[i]);
+		source.read(cipherBlock, blockSize);
+		DEA::encryptBlock((uint64_t*)cipherBlock);
+		dest.write(cipherBlock,blockSize);
+
 	}
-	return cipherBlock;
+
+	source.close();
+	dest.close();
+
 }
 
-void DEA::decrypt()
+void DEA::decrypt(char* sourceFile, char* destFile, uint64_t cipherKey)
 {
+	//throw in thread
+	//this->generateSubKeys(cipherKey);
 
+
+
+	//one cipher block is eight chars
+	int blockSize = 8;
+	char* cipherBlock = new char[8];
+	std::ifstream source(sourceFile, std::ios::binary | std::ios::in);
+	std::ofstream dest(destFile, std::ios::binary | std::ios::out);
+	while (source.eof() == false)
+	{
+		source.read(cipherBlock, blockSize);
+		DEA::decryptBlock((uint64_t*)cipherBlock);
+		dest.write(cipherBlock, blockSize);
+
+	}
+
+	source.close();
+	dest.close();
+
+}
+
+void DEA::encryptBlock(uint64_t* cipherBlockPtr)
+{
+	int i;
+	*cipherBlockPtr = this->initialPermutation(*cipherBlockPtr);
+	for (i = 0; i < 16; i++)
+	{
+		*cipherBlockPtr = this->roundOperation(*cipherBlockPtr, this->subKeyList[i]);
+	}
+
+	(*cipherBlockPtr) = (((*cipherBlockPtr) & 0xFFFFFFFF00000000) >> 32) | (((*cipherBlockPtr)&0x00000000FFFFFFFF)<<32);
+
+	*cipherBlockPtr = this->inversePermutation(*cipherBlockPtr);
+}
+
+void DEA::decryptBlock(uint64_t* cipherBlockPtr)
+{
+	int i;
+	*cipherBlockPtr = this->initialPermutation(*cipherBlockPtr);
+	for (i = 15; i >= 0; i--)
+	{
+		*cipherBlockPtr = this->roundOperation(*cipherBlockPtr, this->subKeyList[i]);
+	}
+
+	(*cipherBlockPtr) = (((*cipherBlockPtr) & 0xFFFFFFFF00000000) >> 32) | (((*cipherBlockPtr) & 0x00000000FFFFFFFF) << 32);
+
+	*cipherBlockPtr = this->inversePermutation(*cipherBlockPtr);
 }
 
 uint64_t DEA::initialPermutation(uint64_t cipherBlock64Bits)
@@ -105,15 +167,16 @@ inline uint32_t DEA::leftCircularShift(int round, uint32_t cipherKey)
 
 uint64_t DEA::roundOperation(uint64_t cipherBlock, uint64_t cipherSubKey)
 {
-	uint32_t leftCipherSubBlock = (uint32_t)(cipherBlock >> 32);
+	uint32_t leftCipherSubBlock = (uint32_t)((cipherBlock >> 32) & 0x00000000FFFFFFFF);
 	uint32_t rightCipherSubBlock = (uint32_t)(cipherBlock & 0x00000000FFFFFFFF);
-
+	uint32_t tempRight = rightCipherSubBlock;
 	uint64_t expandedCipherSubBlock = this->roundExpansion(rightCipherSubBlock);
 	expandedCipherSubBlock ^= cipherSubKey;
+	expandedCipherSubBlock &= 0x0000FFFFFFFFFFFF;
 	rightCipherSubBlock = this->roundSubstition(expandedCipherSubBlock);
 	rightCipherSubBlock = this->roundPermutation(rightCipherSubBlock);
 	rightCipherSubBlock ^= leftCipherSubBlock;
-	return ((((uint64_t)leftCipherSubBlock) << 32) & 0xFFFFFFFF00000000) | ((uint64_t)rightCipherSubBlock);
+	return ((((uint64_t)tempRight) << 32) & 0xFFFFFFFF00000000) | ((uint64_t)rightCipherSubBlock);
 }
 
 uint64_t DEA::roundExpansion(uint32_t cipherSubBlock)
@@ -122,7 +185,7 @@ uint64_t DEA::roundExpansion(uint32_t cipherSubBlock)
 	uint64_t expandedSubCipherBlock = 0;
 	for (i = 0; i < this->SUBKEYSIZE; i++)
 	{
-		expandedSubCipherBlock = (expandedSubCipherBlock << 1) | ((((uint64_t)cipherSubBlock) >> (this->SUBKEYSIZE - this->expansionPermuationTable[i])) & 0x01);
+		expandedSubCipherBlock = (expandedSubCipherBlock << 1) | ((((uint64_t)cipherSubBlock) >> (this->CIPHERSUBBLOCKSIZE - this->expansionPermuationTable[i])) & 0x01);
 	}
 	return expandedSubCipherBlock;
 	
@@ -132,7 +195,7 @@ uint32_t DEA::roundSubstition(uint64_t expandedCipherSubBlock)
 {
 	int i;
 	int x, y;
-	uint64_t cipherMask = 0x000000000000007F;
+	uint64_t cipherMask = 0x000000000000003F;
 	uint32_t cipherSubBlock = 0;
 	uint8_t sixBitBlock;
 	uint8_t xCoord = 0;
@@ -142,9 +205,9 @@ uint32_t DEA::roundSubstition(uint64_t expandedCipherSubBlock)
 		//substitution is determined by 8, 6 bit blocks so examine each 6 bit block by using the mask
 		//get the six bits and reset six bits as byte instead of long
 		sixBitBlock = (uint8_t)(((cipherMask << (i * 6))&expandedCipherSubBlock)>> (i * 6));
-		xCoord = (sixBitBlock & 0x20 >> 4) | (sixBitBlock & 0x01);
+		xCoord = ((sixBitBlock & 0x20) >> 4) | (sixBitBlock & 0x01);
 		yCoord = (sixBitBlock >> 1) & 0x0F;
-		cipherSubBlock |= ((uint32_t)this->substitionBoxesArray[i][xCoord][yCoord])<<(i*6);
+		cipherSubBlock |= ((uint32_t)this->substitionBoxesArray[7-i][xCoord][yCoord])<<(i*4);
 	}
 	return cipherSubBlock;
 }
